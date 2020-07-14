@@ -15,6 +15,7 @@
 		101FCD5824B6BC1200CFDAD2 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 101FCD5624B6BC1200CFDAD2 /* LaunchScreen.storyboard */; };
 		101FCD6024B6E19100CFDAD2 /* Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 101FCD5F24B6E19100CFDAD2 /* Extensions.swift */; };
 		101FCD6624B82C2100CFDAD2 /* MapinfoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 101FCD6524B82C2100CFDAD2 /* MapinfoView.swift */; };
+		101FCD8824BDF91300CFDAD2 /* MapClusterIconGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 101FCD8724BDF91300CFDAD2 /* MapClusterIconGenerator.swift */; };
 		7ECDF27FDFC19BCEBB184EA7 /* Pods_HJMap_Google.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 50A5AD3A16BF66DA3545841D /* Pods_HJMap_Google.framework */; };
 /* End PBXBuildFile section */
 
@@ -29,6 +30,7 @@
 		101FCD5924B6BC1200CFDAD2 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		101FCD5F24B6E19100CFDAD2 /* Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Extensions.swift; sourceTree = "<group>"; };
 		101FCD6524B82C2100CFDAD2 /* MapinfoView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = MapinfoView.swift; sourceTree = "<group>"; };
+		101FCD8724BDF91300CFDAD2 /* MapClusterIconGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapClusterIconGenerator.swift; sourceTree = "<group>"; };
 		3A9282D7D3BD799AC124849D /* Pods-HJMap-Google.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-HJMap-Google.release.xcconfig"; path = "Target Support Files/Pods-HJMap-Google/Pods-HJMap-Google.release.xcconfig"; sourceTree = "<group>"; };
 		50A5AD3A16BF66DA3545841D /* Pods_HJMap_Google.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_HJMap_Google.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		BB90EF81CD1A3D65DCB0B0D5 /* Pods-HJMap-Google.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-HJMap-Google.debug.xcconfig"; path = "Target Support Files/Pods-HJMap-Google/Pods-HJMap-Google.debug.xcconfig"; sourceTree = "<group>"; };
@@ -70,6 +72,7 @@
 				101FCD4B24B6BC1100CFDAD2 /* AppDelegate.swift */,
 				101FCD4D24B6BC1100CFDAD2 /* SceneDelegate.swift */,
 				101FCD4F24B6BC1100CFDAD2 /* ViewController.swift */,
+				101FCD8724BDF91300CFDAD2 /* MapClusterIconGenerator.swift */,
 				101FCD6524B82C2100CFDAD2 /* MapinfoView.swift */,
 				101FCD5F24B6E19100CFDAD2 /* Extensions.swift */,
 				101FCD5124B6BC1100CFDAD2 /* Main.storyboard */,
@@ -216,6 +219,7 @@
 				101FCD4C24B6BC1100CFDAD2 /* AppDelegate.swift in Sources */,
 				101FCD4E24B6BC1100CFDAD2 /* SceneDelegate.swift in Sources */,
 				101FCD6024B6E19100CFDAD2 /* Extensions.swift in Sources */,
+				101FCD8824BDF91300CFDAD2 /* MapClusterIconGenerator.swift in Sources */,
 				101FCD6624B82C2100CFDAD2 /* MapinfoView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

@@ -28,7 +28,7 @@ let kCameraLatitude = 37.551630
 let kCameraLongitude = 126.924496
 
 
-class ViewController: UIViewController, GMSMapViewDelegate, CLLocationManagerDelegate, GMUClusterManagerDelegate, UICollectionViewDelegate, UICollectionViewDelegateFlowLayout, UICollectionViewDataSource {
+class ViewController: UIViewController, GMSMapViewDelegate, CLLocationManagerDelegate, GMUClusterManagerDelegate, UICollectionViewDelegate, UICollectionViewDelegateFlowLayout, UICollectionViewDataSource, GMUClusterRendererDelegate {
     
     private let cellid = "cellid"
     
@@ -79,7 +79,8 @@ class ViewController: UIViewController, GMSMapViewDelegate, CLLocationManagerDel
         setupLayouts()
         setMarker()
         
-        // 항상 containerview에 mapview를 설정하고 나서 containerview를 해당 view에 addsubview해주어야 한다.
+        // 항상 mapview를 화면 일부분에만 놓고싶은 경우,
+        // containerview에 mapview를 설정하고 나서 containerview를 해당 view에 addsubview해주어야 한다.
     }
     
 
@@ -173,11 +174,21 @@ class ViewController: UIViewController, GMSMapViewDelegate, CLLocationManagerDel
         setMarker()
     }
     
-    fileprivate func startClustring() {
+    fileprivate func startClustring(custom: Bool) {
         // Set up the cluster manager with default icon generator and renderer.
-        let iconGenerator = GMUDefaultClusterIconGenerator()
+        var iconGenerator = GMUDefaultClusterIconGenerator()
+        if custom {
+            /// https://stackoverflow.com/questions/38547622/how-to-implement-gmuclusterrenderer-in-swift
+            // custom cluster image --> custom cluster generator
+            iconGenerator = MapClusterIconGenerator()
+        }
+
         let algorithm = GMUNonHierarchicalDistanceBasedAlgorithm()
         let renderer = GMUDefaultClusterRenderer(mapView: mapView, clusterIconGenerator: iconGenerator)
+        if custom {
+            // delegate = self를 해주어야 renderer 관련 function 사용이 가능하고, marker icon(image)를 바꿀 수 있다.
+            renderer.delegate = self
+        }
         clusterManager = GMUClusterManager(map: mapView, algorithm: algorithm, renderer: renderer)
 
         // Generate and add random items to the cluster manager.
@@ -220,8 +231,8 @@ class ViewController: UIViewController, GMSMapViewDelegate, CLLocationManagerDel
     }
     
     
-    var switchStrings = ["custom info window", "marker clustering"]
-    var imageStrings = ["infoWindow", "cluster"]
+    var switchStrings = ["custom info window", "marker clustering", "custom clustering"]
+    var imageStrings = ["infoWindow", "cluster", "cluster"]
     var customInfoClicked: Bool = false
     
     // MARK: - CollectionViewDelegate
@@ -257,7 +268,12 @@ class ViewController: UIViewController, GMSMapViewDelegate, CLLocationManagerDel
         
         else if indexPath.item == 1 {
             self.mapView.clear()
-            startClustring()
+            startClustring(custom: false)
+        }
+            
+        else {
+            self.mapView.clear()
+            startClustring(custom: true)
         }
         
     }
@@ -335,6 +351,30 @@ class ViewController: UIViewController, GMSMapViewDelegate, CLLocationManagerDel
       return false
     }
     
+    // MARK: - GMUClusterRendererDelegate
+    func renderer(_ renderer: GMUClusterRenderer, markerFor object: Any) -> GMSMarker? {
+        /// https://stackoverflow.com/questions/43865481/customize-the-marker-on-google-map-with-clusters
+        switch object {
+        case let item as POIItem:
+
+            let marker = GMSMarker()
+
+            marker.position = item.position
+            marker.icon = UIImage(named: "pin")
+
+            return marker
+            // 밑에는 아직 잘 안됨.
+//        case let staticCluster as GMUStaticCluster:
+//            let marker = GMSMarker()
+//
+//            marker.position = staticCluster.position
+//            marker.icon = UIImage(named: "pin")
+//
+//            return marker
+        default:
+            return nil
+        }
+    }
 
 }
 
