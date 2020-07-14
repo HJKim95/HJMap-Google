@@ -194,9 +194,19 @@ class ViewController: UIViewController, GMSMapViewDelegate, CLLocationManagerDel
     /// cluster manager.
     private func generateClusterItems() {
         let extent = 0.01
+        let currentLat = self.mapView.myLocation?.coordinate.latitude
+        let currentLng = self.mapView.myLocation?.coordinate.longitude
         for index in 1...kClusterItemCount {
-            let lat = kCameraLatitude + extent * randomScale()
-            let lng = kCameraLongitude + extent * randomScale()
+            var lat: Double = 0
+            var lng: Double = 0
+            if currentLat != nil && currentLng != nil {
+                lat = currentLat! + extent * randomScale()
+                lng = currentLng! + extent * randomScale()
+            }
+            else {
+                lat = kCameraLatitude + extent * randomScale()
+                lng = kCameraLongitude + extent * randomScale()
+            }
             let name = "Item \(index)"
             // 원하는 marker데이터에 맞게 POIItem init을 바꿔주고 그거에 맞게 clusterManager에 add 하면 된다.
             let item = POIItem(position: CLLocationCoordinate2D(latitude: lat, longitude: lng), name: name)
@@ -352,6 +362,7 @@ class switchCell: UICollectionViewCell {
         label.textAlignment = .center
         label.numberOfLines = 0
         label.font = UIFont.systemFont(ofSize: 13, weight: .light)
+        label.textColor = .black
         return label
     }()
     
