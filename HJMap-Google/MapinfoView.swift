@@ -50,7 +50,7 @@ class MapinfoView: UIView {
         //Add the point
         shadowLayer.path = shadowPathLeft.cgPath
         shadowLayer.fillColor = UIColor.white.cgColor
-        shadowLayer.shadowColor = UIColor.black.cgColor
+        shadowLayer.shadowColor = UIColor.darkGray.cgColor
         shadowLayer.shadowPath = shadowPathLeft.cgPath
         shadowLayer.shadowOffset = CGSize(width: 0, height: 1)
         shadowLayer.shadowOpacity = 0.3
@@ -59,7 +59,7 @@ class MapinfoView: UIView {
         
         shadowLayer2.path = shadowPathRight.cgPath
         shadowLayer2.fillColor = UIColor.white.cgColor
-        shadowLayer2.shadowColor = UIColor.black.cgColor
+        shadowLayer2.shadowColor = UIColor.darkGray.cgColor
         shadowLayer2.shadowPath = shadowPathRight.cgPath
         shadowLayer2.shadowOffset = CGSize(width: 0, height: 1)
         shadowLayer2.shadowOpacity = 0.3

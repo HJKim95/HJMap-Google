@@ -8,98 +8,137 @@
 
 import UIKit
 import GoogleMaps
+import GoogleMapsUtils
 
-class ViewController: UIViewController, GMSMapViewDelegate, CLLocationManagerDelegate {
+/// Point of Interest Item which implements the GMUClusterItem protocol.
+class POIItem: NSObject, GMUClusterItem {
+  var position: CLLocationCoordinate2D
+  var name: String!
+
+    // 추후 marker데이터에 맞게 init 바꿔주면 될 것 같습니다.
+  init(position: CLLocationCoordinate2D, name: String) {
+    self.position = position
+    self.name = name
+  }
+}
+
+// 37.551630, 126.924496 (홍대)
+let kClusterItemCount = 1000
+let kCameraLatitude = 37.551630
+let kCameraLongitude = 126.924496
+
+
+class ViewController: UIViewController, GMSMapViewDelegate, CLLocationManagerDelegate, GMUClusterManagerDelegate, UICollectionViewDelegate, UICollectionViewDelegateFlowLayout, UICollectionViewDataSource {
     
+    private let cellid = "cellid"
+    
+    private var mapView: GMSMapView!
+    private var clusterManager: GMUClusterManager!
+    private var locationManager = CLLocationManager()
+    
+    lazy var myLocationButton: UIButton = {
+        let b = UIButton(type: .system)
+        b.addTarget(self, action: #selector(myLocation), for: .touchUpInside)
+        b.setImage(UIImage(named: "my_location"), for: .normal)
+        b.tintColor = .black
+        b.isUserInteractionEnabled = true
+        return b
+    }()
+    
+    lazy var switchCollectionView: UICollectionView = {
+        let layout = UICollectionViewFlowLayout()
+        layout.scrollDirection = .horizontal
+        layout.minimumLineSpacing = 12
+        let cv = UICollectionView(frame: .zero, collectionViewLayout: layout)
+        cv.delegate = self
+        cv.dataSource = self
+        cv.backgroundColor = .clear
+        cv.showsHorizontalScrollIndicator = false
+        cv.alwaysBounceHorizontal = false
+        return cv
+    }()
+    
+    override func loadView() {
+        let camera = GMSCameraPosition.camera(withLatitude: kCameraLatitude, longitude: kCameraLongitude, zoom: 15)
+        mapView = GMSMapView.map(withFrame: .zero, camera: camera)
+        mapView.isMyLocationEnabled = true
+        mapView.delegate = self
+        self.view = mapView
+    }
+    
+    
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        view.backgroundColor = .clear
+        
+        self.locationManager.delegate = self
+        self.locationManager.startUpdatingLocation()
+        
+        switchCollectionView.register(switchCell.self, forCellWithReuseIdentifier: cellid)
+        
+        setupLayouts()
+        setMarker()
+        
+        // 항상 containerview에 mapview를 설정하고 나서 containerview를 해당 view에 addsubview해주어야 한다.
+    }
+    
+
     var mapContainerView: UIView = {
         let view = UIView()
         return view
     }()
     
-    lazy var myLocationLabel: UILabel = {
-        let lb = UILabel()
-        lb.isUserInteractionEnabled = true
-        lb.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(myLocation)))
-        lb.backgroundColor = .brown
-        lb.textColor = .white
-        lb.textAlignment = .center
-        lb.text = "내 위치"
-        return lb
-    }()
+    var switchCollectionViewConstraint: NSLayoutConstraint?
+    var myLocationButtonConstraint: NSLayoutConstraint?
+
+    fileprivate func setupLayouts() {
+        view.addSubview(switchCollectionView)
+        view.addSubview(myLocationButton)
+        
+        switchCollectionViewConstraint = switchCollectionView.anchor(view.topAnchor, left: view.leftAnchor, bottom: nil, right: view.rightAnchor, topConstant: 100, leftConstant: 12, bottomConstant: 0, rightConstant: 0, widthConstant: 0, heightConstant: 60).first
+        myLocationButtonConstraint = myLocationButton.anchor(nil, left: view.leftAnchor, bottom: view.bottomAnchor, right: nil, topConstant: 0, leftConstant: 6, bottomConstant: 65, rightConstant: 0, widthConstant: 50, heightConstant: 50).first
+    }
     
-    lazy var markerLabel: UILabel = {
-        let lb = UILabel()
-        lb.isUserInteractionEnabled = true
-        lb.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(marker)))
-        lb.backgroundColor = .blue
-        lb.textColor = .white
-        lb.textAlignment = .center
-        lb.text = "marker 생성"
-        return lb
-    }()
-    
-    lazy var customMarkerLabel: UILabel = {
-        let lb = UILabel()
-        lb.isUserInteractionEnabled = true
-        lb.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(customMarker)))
-        lb.backgroundColor = .darkGray
-        lb.textColor = .white
-        lb.textAlignment = .center
-        lb.text = "custom Marker"
-        return lb
-    }()
-    
-    lazy var customInfoLabel: UILabel = {
-        let lb = UILabel()
-        lb.isUserInteractionEnabled = true
-        lb.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(setupInfoWindow)))
-        lb.backgroundColor = .purple
-        lb.textColor = .white
-        lb.textAlignment = .center
-        lb.text = "custom info"
-        return lb
-    }()
-    
-    lazy var customInfoDismissLabel: UILabel = {
-        let lb = UILabel()
-        lb.isUserInteractionEnabled = true
-        lb.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(customInfoDismiss)))
-        lb.backgroundColor = .magenta
-        lb.textColor = .white
-        lb.textAlignment = .center
-        lb.text = "custom info dismiss"
-        return lb
-    }()
-    
-    lazy var mapview: GMSMapView = {
-        var mapview = GMSMapView()
-        let camera = GMSCameraPosition.camera(withLatitude: 37.552468, longitude: 126.923139, zoom: 16.0)
-        mapview = GMSMapView.map(withFrame: .zero, camera: camera)
-        mapview.isMyLocationEnabled = true
-        mapview.delegate = self
-        return mapview
-    }()
+    // MARK: - Private
+
+    /// get my location
+    @objc fileprivate func myLocation() {
+        guard let lat = self.mapView.myLocation?.coordinate.latitude,
+              let lng = self.mapView.myLocation?.coordinate.longitude else { return }
+
+        let camera = GMSCameraPosition.camera(withLatitude: lat ,longitude: lng, zoom: 16.0)
+        self.mapView.animate(to: camera)
+    }
+
+    fileprivate func setMarker() {
+        mapView.clear()
+        let marker = GMSMarker()
+        marker.position = CLLocationCoordinate2D(latitude: 37.552468, longitude: 126.923139)
+        marker.title = "title"
+        marker.snippet = "snippet"
+        marker.map = mapView
+    }
     
     var infoWindow: UIView = {
         let view = UIView()
         view.backgroundColor = .clear
         return view
     }()
-    
+
     let whiteBackView: UIView = {
         let view = UIView()
         view.backgroundColor = .white
         view.layer.masksToBounds = true
         return view
     }()
-    
+
     let whiteTriBackView: UIView = {
         let view = UIView()
         view.backgroundColor = .white
         return view
     }()
-    
-    
+
+
     let infoLabel: UILabel = {
         let lb = UILabel()
         lb.font = UIFont(name: "DMSans-Regular", size: 12)
@@ -109,118 +148,9 @@ class ViewController: UIViewController, GMSMapViewDelegate, CLLocationManagerDel
         return lb
     }()
     
-    var locationManager = CLLocationManager()
-    
-    
-    // custom indo window
-    // custom marker
-    
-    var mapContainerViewConstraint: NSLayoutConstraint?
-    var myLocationLabelConstraint: NSLayoutConstraint?
-    var markerLabelConstraint: NSLayoutConstraint?
-    var customMarkerLabelConstraint: NSLayoutConstraint?
-    var customInfoLabelConstraint: NSLayoutConstraint?
-    var customInfoDismissLabelConstraint: NSLayoutConstraint?
-    
-    override func viewDidLoad() {
-        super.viewDidLoad()
-        self.view.backgroundColor = .white
-        
-        // 기본 설정
-//        let camera = GMSCameraPosition.camera(withLatitude: -33.86, longitude: 151.20, zoom: 6.0)
-//        let mapView = GMSMapView.map(withFrame: CGRect.zero, camera: camera)
-//        view = mapView
-        
-        self.locationManager.delegate = self
-        self.locationManager.startUpdatingLocation()
-        
-        mapContainerView = mapview
-        
-        // 항상 containerview에 mapview를 설정하고 나서 containerview를 해당 view에 addsubview해주어야 한다.
-        setupLayouts()
-        
-        // 기본 marker 설정
-//        let marker = GMSMarker()
-//        marker.position = CLLocationCoordinate2D(latitude: -33.86, longitude: 151.20)
-//        marker.title = "Sydney"
-//        marker.snippet = "Australia"
-//        marker.map = mapView
-    }
-    
-    fileprivate func setupLayouts() {
-        view.addSubview(mapContainerView)
-        view.addSubview(myLocationLabel)
-        view.addSubview(markerLabel)
-        view.addSubview(customMarkerLabel)
-        view.addSubview(customInfoLabel)
-        view.addSubview(customInfoDismissLabel)
-
-        mapContainerViewConstraint = mapContainerView.anchor(view.topAnchor, left: view.leftAnchor, bottom: view.bottomAnchor, right: view.rightAnchor, topConstant: 0, leftConstant: 0, bottomConstant: 0, rightConstant: 0, widthConstant: 0, heightConstant: 0).first
-        myLocationLabelConstraint = myLocationLabel.anchor(view.topAnchor, left: nil, bottom: nil, right: view.rightAnchor, topConstant: 100, leftConstant: 0, bottomConstant: 0, rightConstant: 30, widthConstant: 100, heightConstant: 40).first
-        markerLabelConstraint = markerLabel.anchor(myLocationLabel.bottomAnchor, left: nil, bottom: nil, right: myLocationLabel.rightAnchor, topConstant: 20, leftConstant: 0, bottomConstant: 0, rightConstant: 0, widthConstant: 100, heightConstant: 40).first
-        customMarkerLabelConstraint = customMarkerLabel.anchor(markerLabel.bottomAnchor, left: nil, bottom: nil, right: markerLabel.rightAnchor, topConstant: 20, leftConstant: 0, bottomConstant: 0, rightConstant: 0, widthConstant: 120, heightConstant: 40).first
-        customInfoLabelConstraint = customInfoLabel.anchor(customMarkerLabel.bottomAnchor, left: nil, bottom: nil, right: customMarkerLabel.rightAnchor, topConstant: 20, leftConstant: 0, bottomConstant: 0, rightConstant: 0, widthConstant: 120, heightConstant: 40).first
-        customInfoDismissLabelConstraint = customInfoDismissLabel.anchor(customInfoLabel.bottomAnchor, left: nil, bottom: nil, right: customInfoLabel.rightAnchor, topConstant: 20, leftConstant: 0, bottomConstant: 0, rightConstant: 0, widthConstant: 140, heightConstant: 40).first
-    }
-    
-    //Location Manager delegates
-    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-
-        let location = locations.last
-
-        let camera = GMSCameraPosition.camera(withLatitude: (location?.coordinate.latitude)!, longitude: (location?.coordinate.longitude)!, zoom: 16.0)
-
-        self.mapview.animate(to: camera)
-
-        //Finally stop updating location otherwise it will come again and again in this delegate
-        self.locationManager.stopUpdatingLocation()
-    }
-    
-    func mapView(_ mapView: GMSMapView, didTap marker: GMSMarker) -> Bool {
-        print("did Tapped marker")
-        return false
-    }
-//    func mapView(_ mapView: GMSMapView, markerInfoWindow marker: GMSMarker) -> UIView? {
-        // 66자 최대로
-//        infoLabel.text = "자신만의 메모를 남기세요"
-//        return self.infoWindow
-//    }
-    
-    func mapView(_ mapView: GMSMapView, didTapInfoWindowOf marker: GMSMarker) {
-        print("did Tapped info window")
-    }
-
-    @objc fileprivate func myLocation() {
-        guard let lat = self.mapview.myLocation?.coordinate.latitude,
-              let lng = self.mapview.myLocation?.coordinate.longitude else { return }
-
-        let camera = GMSCameraPosition.camera(withLatitude: lat ,longitude: lng, zoom: 16.0)
-        self.mapview.animate(to: camera)
-    }
-    
-    @objc fileprivate func marker() {
-        mapview.clear()
-        let marker = GMSMarker()
-        marker.position = CLLocationCoordinate2D(latitude: 37.552468, longitude: 126.923139)
-        marker.title = "title"
-        marker.snippet = "snippet"
-        marker.map = mapview
-    }
-    
-    @objc fileprivate func customMarker() {
-        mapview.clear()
-        let marker = GMSMarker()
-        marker.position = CLLocationCoordinate2D(latitude: 37.552468, longitude: 126.923139)
-        marker.title = "title"
-        marker.snippet = "snippet"
-        marker.map = mapview
-//        marker.icon = UIImage(named: "")
-        marker.icon = GMSMarker.markerImage(with: .darkGray)
-    }
-    
     // infoWindow에는 autolayout 적용 불가능.
     @objc fileprivate func setupInfoWindow() {
-        mapview.clear()
+        mapView.clear()
         customInfoClicked = true
         let width:CGFloat = 143
         let height:CGFloat = 103
@@ -228,43 +158,213 @@ class ViewController: UIViewController, GMSMapViewDelegate, CLLocationManagerDel
         let mapinfoview = MapinfoView(frame: infoWindow.frame)
         mapinfoview.backgroundColor = .clear
         infoWindow.addSubview(mapinfoview)
-        
+
         infoWindow.addSubview(whiteBackView)
         whiteBackView.layer.cornerRadius = width * 0.04
-        
+
         infoWindow.addSubview(whiteTriBackView)
-        
+
         infoWindow.addSubview(infoLabel)
-        
+
         whiteBackView.frame = CGRect(x: 0, y: 0, width: width, height: height * 6/7)
         whiteTriBackView.frame = CGRect(x: width * 2/5, y: height * 6/7, width: width * 1/5, height: 1)
-        
+
         infoLabel.frame = CGRect(x: 12, y: 0, width: 143 - 24, height: height - 12)
-        customMarker()
+        setMarker()
     }
     
-    @objc fileprivate func customInfoDismiss() {
-        mapview.clear()
-        customInfoClicked = false
-        customMarker()
+    fileprivate func startClustring() {
+        // Set up the cluster manager with default icon generator and renderer.
+        let iconGenerator = GMUDefaultClusterIconGenerator()
+        let algorithm = GMUNonHierarchicalDistanceBasedAlgorithm()
+        let renderer = GMUDefaultClusterRenderer(mapView: mapView, clusterIconGenerator: iconGenerator)
+        clusterManager = GMUClusterManager(map: mapView, algorithm: algorithm, renderer: renderer)
+
+        // Generate and add random items to the cluster manager.
+        generateClusterItems()
+
+        // Call cluster() after items have been added to perform the clustering and rendering on map.
+        clusterManager.cluster()
+
+        // Register self to listen to both GMUClusterManagerDelegate and GMSMapViewDelegate events.
+        clusterManager.setDelegate(self, mapDelegate: self)
     }
     
+    /// Randomly generates cluster items within some extent of the camera and adds them to the
+    /// cluster manager.
+    private func generateClusterItems() {
+        let extent = 0.01
+        for index in 1...kClusterItemCount {
+            let lat = kCameraLatitude + extent * randomScale()
+            let lng = kCameraLongitude + extent * randomScale()
+            let name = "Item \(index)"
+            // 원하는 marker데이터에 맞게 POIItem init을 바꿔주고 그거에 맞게 clusterManager에 add 하면 된다.
+            let item = POIItem(position: CLLocationCoordinate2D(latitude: lat, longitude: lng), name: name)
+            clusterManager.add(item)
+        }
+    }
+    
+    /// Returns a random value between -1.0 and 1.0.
+    private func randomScale() -> Double {
+        return Double(arc4random()) / Double(UINT32_MAX) * 2.0 - 1.0
+    }
+    
+    
+    var switchStrings = ["custom info window", "marker clustering"]
+    var imageStrings = ["infoWindow", "cluster"]
     var customInfoClicked: Bool = false
     
-    func mapView(_ mapView: GMSMapView, markerInfoWindow marker: GMSMarker) -> UIView? {
-
-        if customInfoClicked {
-            // custom info 클릭했을때(적용했을때)
-            // 66자 최대
-            infoLabel.text = "자신만의 메모를 남기세요"
-            return self.infoWindow
+    // MARK: - CollectionViewDelegate
+    func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
+        let cell = collectionView.dequeueReusableCell(withReuseIdentifier: cellid, for: indexPath) as! switchCell
+        cell.layer.cornerRadius = 15
+        cell.layer.masksToBounds = true
+        cell.switchLabel.text = switchStrings[indexPath.item]
+        cell.switchImageView.image = UIImage(named: imageStrings[indexPath.item])
+        return cell
+    }
+    
+    func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
+        if indexPath.item == 0 {
+            if !customInfoClicked {
+                // 현재 기본 marker 상태 -> custom info window 보여주고 싶을때
+                self.customInfoClicked = true
+                self.switchStrings[0] = "default marker settings"
+                self.switchCollectionView.reloadData()
+                setupInfoWindow()
+                
+            }
+            else {
+                // 현재 custom info window 상태 -> 기본 marker 보여주고 싶을때
+                self.customInfoClicked = false
+                infoWindow.removeFromSuperview()
+                self.switchStrings[0] = "custom info window"
+                self.switchCollectionView.reloadData()
+                setMarker()
+            }
+            
         }
         
+        else if indexPath.item == 1 {
+            self.mapView.clear()
+            startClustring()
+        }
+        
+    }
+    
+    //MARK: - CollectionViewDatasource
+    func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
+        return switchStrings.count
+    }
+    
+    func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
+        return CGSize(width: 120, height: 60)
+    }
+    
+
+
+
+    // MARK: - Location Manager delegate
+    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+
+        let location = locations.last
+
+        let camera = GMSCameraPosition.camera(withLatitude: (location?.coordinate.latitude)!, longitude: (location?.coordinate.longitude)!, zoom: 16.0)
+
+        self.mapView.animate(to: camera)
+
+        //Finally stop updating location otherwise it will come again and again in this delegate
+        self.locationManager.stopUpdatingLocation()
+    }
+    
+    // MARK: - GMSMapViewDelegate
+
+    func mapView(_ mapView: GMSMapView, didTap marker: GMSMarker) -> Bool {
+        if let poiItem = marker.userData as? POIItem {
+            NSLog("Did tap marker for cluster item \(String(describing: poiItem.name))")
+        } else {
+          NSLog("Did tap a normal marker")
+        }
+        return false
+    }
+
+    func mapView(_ mapView: GMSMapView, didTapInfoWindowOf marker: GMSMarker) {
+        print("did Tapped info window")
+    }
+    
+    func mapView(_ mapView: GMSMapView, markerInfoWindow marker: GMSMarker) -> UIView? {
+        if customInfoClicked {
+            // 현재 기본 marker 상태 -> custom info window 보여주고 싶을때
+            // 66자 최대
+            if let poiItem = marker.userData as? POIItem {
+                infoLabel.text = "Testing, \(String(describing: poiItem.name))"
+            }
+            else {
+                infoLabel.text = "메모를 적어주세요"
+            }
+            return self.infoWindow
+        }
+
         else {
-            // 원래 기본 marker info 처럼 나오게
+            // 현재 custom info window 상태 -> 기본 marker 보여주고 싶을때
+            if let poiItem = marker.userData as? POIItem {
+                marker.title = "Testing"
+                marker.snippet = "\(String(describing: poiItem.name))"
+            }
             return nil
         }
     }
     
+    // MARK: - GMUClusterManagerDelegate
 
+    func clusterManager(_ clusterManager: GMUClusterManager, didTap cluster: GMUCluster) -> Bool {
+      let newCamera = GMSCameraPosition.camera(withTarget: cluster.position,
+        zoom: mapView.camera.zoom + 1)
+      let update = GMSCameraUpdate.setCamera(newCamera)
+      mapView.moveCamera(update)
+      return false
+    }
+    
+
+}
+
+
+class switchCell: UICollectionViewCell {
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        setupLayouts()
+    }
+    
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+    
+    let switchImageView: UIImageView = {
+        let iv = UIImageView()
+        iv.backgroundColor = .clear
+        iv.image = UIImage(named: "")
+        iv.contentMode = .scaleAspectFit
+        return iv
+    }()
+    
+    let switchLabel: UILabel = {
+        let label = UILabel()
+        label.textAlignment = .center
+        label.numberOfLines = 0
+        label.font = UIFont.systemFont(ofSize: 13, weight: .light)
+        return label
+    }()
+    
+    var switchImageViewConstraint: NSLayoutConstraint?
+    var switchLabelConstraint: NSLayoutConstraint?
+    
+    fileprivate func setupLayouts() {
+        backgroundColor = .white
+        
+        addSubview(switchImageView)
+        addSubview(switchLabel)
+        
+        switchImageViewConstraint = switchImageView.anchor(self.topAnchor, left: self.leftAnchor, bottom: self.bottomAnchor, right: nil, topConstant: 10, leftConstant: 10, bottomConstant: 10, rightConstant: 0, widthConstant: 40, heightConstant: 0).first
+        switchLabelConstraint = switchLabel.anchor(self.topAnchor, left: switchImageView.rightAnchor, bottom: self.bottomAnchor, right: self.rightAnchor, topConstant: 0, leftConstant: 0, bottomConstant: 0, rightConstant: 0, widthConstant: 0, heightConstant: 0).first
+    }
 }
